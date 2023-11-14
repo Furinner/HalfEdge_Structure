@@ -1,0 +1,4 @@
+﻿  display.cpp
+C:\Fi\Program\C++\ZJU\2023_fall\3d_CAD_Modeling\HalfEdge_Structure\HalfEdge_Structure\model.h(2,10): warning C4067: 预处理器指令后有意外标记 - 应输入换行符
+C:\Fi\Program\C++\ZJU\2023_fall\3d_CAD_Modeling\HalfEdge_Structure\HalfEdge_Structure\display.cpp(178,30): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+  HalfEdge_Structure.vcxproj -> C:\Fi\Program\C++\ZJU\2023_fall\3d_CAD_Modeling\HalfEdge_Structure\x64\Debug\HalfEdge_Structure.exe
