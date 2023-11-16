@@ -1,8 +1,11 @@
-﻿  main.cpp
-C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.34.31933\include\filesystem(13): warning STL4038: The contents of <filesystem> are available only with C++17 or later.
-C:\Fi\Program\C++\ZJU\2023_fall\3d_CAD_Modeling\HalfEdge_Structure\HalfEdge_Structure\shaderprogram.h(2,10): warning C4067: 预处理器指令后有意外标记 - 应输入换行符
+﻿  display.cpp
 C:\Fi\Program\C++\ZJU\2023_fall\3d_CAD_Modeling\HalfEdge_Structure\HalfEdge_Structure\model.h(2,10): warning C4067: 预处理器指令后有意外标记 - 应输入换行符
-C:\Fi\Program\C++\ZJU\2023_fall\3d_CAD_Modeling\HalfEdge_Structure\HalfEdge_Structure\main.cpp(137,66): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
-C:\Fi\Program\C++\ZJU\2023_fall\3d_CAD_Modeling\HalfEdge_Structure\HalfEdge_Structure\main.cpp(137,39): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
-C:\Fi\Program\C++\ZJU\2023_fall\3d_CAD_Modeling\HalfEdge_Structure\HalfEdge_Structure\main.cpp(442,8): warning C4305: “参数”: 从“ImGuiInputTextFlags_”到“bool”截断
+C:\Fi\Program\C++\ZJU\2023_fall\3d_CAD_Modeling\HalfEdge_Structure\HalfEdge_Structure\display.cpp(182,30): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+C:\Fi\Program\C++\ZJU\2023_fall\3d_CAD_Modeling\HalfEdge_Structure\HalfEdge_Structure\display.cpp(399,44): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+C:\Fi\Program\C++\ZJU\2023_fall\3d_CAD_Modeling\HalfEdge_Structure\HalfEdge_Structure\display.cpp(450,37): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+  model.cpp
+C:\Fi\Program\C++\ZJU\2023_fall\3d_CAD_Modeling\HalfEdge_Structure\HalfEdge_Structure\model.h(2,10): warning C4067: 预处理器指令后有意外标记 - 应输入换行符
+C:\Fi\Program\C++\ZJU\2023_fall\3d_CAD_Modeling\HalfEdge_Structure\HalfEdge_Structure\model.cpp(101,37): warning C4267: “=”: 从“size_t”转换到“int”，可能丢失数据
+C:\Fi\Program\C++\ZJU\2023_fall\3d_CAD_Modeling\HalfEdge_Structure\HalfEdge_Structure\model.cpp(119,33): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+  正在生成代码...
   HalfEdge_Structure.vcxproj -> C:\Fi\Program\C++\ZJU\2023_fall\3d_CAD_Modeling\HalfEdge_Structure\x64\Debug\HalfEdge_Structure.exe

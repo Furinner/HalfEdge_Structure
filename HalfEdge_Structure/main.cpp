@@ -111,17 +111,19 @@ void mousePosCallback(GLFWwindow* window, double xposIn, double yposIn) {
 }
 
 // imgui的辅助方法，将所有元素选择相关变量归0
-void cleanGeoEleIdx(uPtr<VertDisplay>& vertDisplay, uPtr<LoopDisplay>& loopDisplay, uPtr<EdgeDisplay>& edgeDisplay, uPtr<FaceDisplay>& faceDisplay) {
+void cleanGeoEleIdx(uPtr<VertDisplay>& vertDisplay, uPtr<LoopDisplay>& loopDisplay, uPtr<EdgeDisplay>& edgeDisplay, uPtr<FaceDisplay>& faceDisplay, uPtr<Model>& model) {
     currSolidIdx = -1;
     currFaceIdx = -1;
     currLoopIdx = -1;
     currEdgeIdx = -1;
-    currVertIdx = -1;
+    currVertIdx = -1; 
     mefV2Idx = -1;
+    kfmrhF2Idx = -1;
     vertDisplay->dontRender();
     loopDisplay->dontRender();
     edgeDisplay->dontRender();
     faceDisplay->dontRender();
+    model->dontRender();
 }
 
 
@@ -171,7 +173,7 @@ void drawGui(int windowWidth, int windowHeight, uPtr<Model>& model, uPtr<VertDis
             Vertex* currVert = model->vertices[currVertIdx].get();
             Loop* currLoop = model->loops[currLoopIdx].get();
             model->mev(currVert, currLoop, mevPos);
-            cleanGeoEleIdx(vertDisplay, loopDisplay, edgeDisplay, faceDisplay);
+            cleanGeoEleIdx(vertDisplay, loopDisplay, edgeDisplay, faceDisplay, model);
         }
     };
     ImGui::SameLine();
@@ -192,7 +194,7 @@ void drawGui(int windowWidth, int windowHeight, uPtr<Model>& model, uPtr<VertDis
             Vertex* v1 = model->vertices[currVertIdx].get();
             Vertex* v2 = model->vertices[mefV2Idx].get();
             model->mef(v1, v2, mefNor);
-            cleanGeoEleIdx(vertDisplay, loopDisplay, edgeDisplay, faceDisplay);
+            cleanGeoEleIdx(vertDisplay, loopDisplay, edgeDisplay, faceDisplay, model);
         }
     }
     ImGui::SameLine();
@@ -262,7 +264,7 @@ void drawGui(int windowWidth, int windowHeight, uPtr<Model>& model, uPtr<VertDis
                 } while (currHe != origHe);
                 if (he1InLoop && he2InLoop) {
                     model->kemr(currEdge, currLoop);
-                    cleanGeoEleIdx(vertDisplay, loopDisplay, edgeDisplay, faceDisplay);
+                    cleanGeoEleIdx(vertDisplay, loopDisplay, edgeDisplay, faceDisplay,model);
                 }
                 else {
                     debugLog = "Edge's two halfEdges should be in the same loop before performing kemr!";
@@ -288,6 +290,7 @@ void drawGui(int windowWidth, int windowHeight, uPtr<Model>& model, uPtr<VertDis
         }
         else {
             model->kfmrh(model->faces[currFaceIdx].get(), model->faces[kfmrhF2Idx].get());
+            cleanGeoEleIdx(vertDisplay, loopDisplay, edgeDisplay, faceDisplay, model);
         }
     }
     ImGui::SameLine();
@@ -319,6 +322,7 @@ void drawGui(int windowWidth, int windowHeight, uPtr<Model>& model, uPtr<VertDis
         }
         else {
             model->sweeping(model->faces[currFaceIdx].get(), sweepingDir, sweepingLen);
+            cleanGeoEleIdx(vertDisplay, loopDisplay, edgeDisplay, faceDisplay, model);
         }
     }
     ImGui::SameLine();

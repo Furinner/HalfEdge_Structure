@@ -161,7 +161,9 @@ void Model::draw() {
     }
 }
 
-
+void Model::dontRender() {
+    render = false;
+}
 
 
 

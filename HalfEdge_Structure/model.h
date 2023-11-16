@@ -73,6 +73,7 @@ public:
     Model();
     void update(int sIdx, uPtr<Camera>& cam);
     void draw();
+    void dontRender();
 
     //Euler Operations
     Solid* mvfs(vec3 vpos, vec3 nor);
