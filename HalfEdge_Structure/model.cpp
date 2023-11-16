@@ -6,43 +6,162 @@ Vertex::Vertex(vec3 pos) {
 }
 
 Model::Model() {
-}
-
-void Model::setupModel() {
-
     float vertices[] = {
          5.f,  1.f, 0.0f,  // top right 
          1.f, -1.f, 0.0f,  // bottom right 
         -1.f, -1.f, 0.0f,  // bottom left 
         -1.f,  1.f, 0.0f   // top left  
     };
+
+    float nor[] = {
+    0.f,  1.f, 0.0f,  // top right 
+    0.f,  1.f, 0.0f,  // bottom right 
+    0.f,  1.f, 0.0f, // bottom left 
+    0.f,  1.f, 0.0f  // top left  
+
+    };
+
+    float col[] = {
+        0.f,  1.f, 0.0f,  // top right 
+        0.f,  1.f, 0.0f,  // bottom right 
+        0.f,  1.f, 0.0f, // bottom left 
+        0.f,  1.f, 0.0f  // top left  
+
+    };
+
     unsigned int indices[] = {  // note that we start from 0! 
         0, 1, 3,  // first Triangle 
         1, 2, 3   // second Triangle 
     };
 
     glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &bufPos);
+    glGenBuffers(1, &bufNor);
+    glGenBuffers(1, &bufCol);
     glGenBuffers(1, &EBO);
 
     // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s). 
     glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 
+    glBindBuffer(GL_ARRAY_BUFFER, bufPos);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glBindBuffer(GL_ARRAY_BUFFER, bufNor);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(nor), nor, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glBindBuffer(GL_ARRAY_BUFFER, bufCol);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(col), col, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
 
+void Model::update(int sIdx, uPtr<Camera>& cam) {
+    this->sIdx = sIdx;
+    if (sIdx != -1) {
+        render = true;
+    }
+    else {
+        render = false;
+    }
+    if (render) {
+        try {
+            Solid* s = solids[sIdx].get();
+            Face* origF = s->sface;
+            if (origF == nullptr) {
+                render = false;
+                return;
+            }
+            std::vector<vec3> pos;
+            std::vector<vec3> nor;
+            std::vector<vec3> col;
+            std::vector<int> idx;
+            Face* currF = origF;
+            do {
+                getFaceData(currF, cam, pos, nor, col, idx);
+                currF = currF->nextf;
+            } while (currF != origF);
+
+            glBindBuffer(GL_ARRAY_BUFFER, bufPos);
+            glBufferData(GL_ARRAY_BUFFER, pos.size() * sizeof(vec3), pos.data(), GL_STATIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, bufNor);
+            glBufferData(GL_ARRAY_BUFFER, nor.size() * sizeof(vec3), nor.data(), GL_STATIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, bufCol);
+            glBufferData(GL_ARRAY_BUFFER, col.size() * sizeof(vec3), col.data(), GL_STATIC_DRAW);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx.size() * sizeof(GLuint), idx.data(), GL_STATIC_DRAW);
+            drawElement = idx.size();
+            glBindVertexArray(0);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        }
+        catch (...) {
+            render = false;
+        }
+    }
+}
+
+void Model::getFaceData(Face* f1, uPtr<Camera>& cam, std::vector<vec3>& pos, std::vector<vec3>& nor, std::vector<vec3>& col, std::vector<int>& idx) {
+    CDT::Triangulation<float> cdt;
+    std::vector<CDT::V2d<float>> f1pos;
+    CDT::EdgeVec edges;
+    Loop* lp1 = f1->floop;
+    Loop* currlp = lp1;
+    int f1VIdx = 0;
+    int origPosSize = pos.size();
+    do {
+        int origF1VIdx = f1VIdx;
+        HalfEdge* origHe = currlp->ledg;
+        HalfEdge* currHe = origHe;
+        if (currHe == nullptr) {
+            render = false;
+            return;
+        }
+        do {
+            /*vec2 vInCam = vec2(projView * vec4(currHe->hev->pos, 1.f));
+            CDT::V2d<float> tempV{ vInCam.x, vInCam.y };*/
+            glm::quat toPosZ = glm::rotation(f1->nor, vec3(0.f, 0.f, 1.f));
+            vec2 tempVec = vec2(glm::rotate(toPosZ, currHe->hev->pos));
+            CDT::V2d<float> tempV{ tempVec.x, tempVec.y };
+            f1pos.push_back(tempV);
+            pos.push_back(currHe->hev->pos);
+            nor.push_back(f1->nor);
+            col.push_back(vec3(0.f, 0.4f, 0.8f));
+            edges.push_back(CDT::Edge(f1VIdx, f1VIdx + 1));
+            f1VIdx += 1;
+            currHe = currHe->nxt;
+        } while (currHe != origHe);
+        edges.pop_back();
+        edges.push_back(CDT::Edge(f1VIdx - 1, origF1VIdx));
+        currlp = currlp->nextl;
+    } while (currlp != lp1);
+    cdt.insertVertices(f1pos);
+    cdt.insertEdges(edges);
+    cdt.eraseOuterTrianglesAndHoles();
+    for (int i = 0; i < cdt.triangles.size(); ++i) {
+        idx.push_back(cdt.triangles[i].vertices[0] + origPosSize);
+        idx.push_back(cdt.triangles[i].vertices[1] + origPosSize);
+        idx.push_back(cdt.triangles[i].vertices[2] + origPosSize);
+    }
 }
 
 void Model::draw() {
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //index有几个顶点就绘制几个，一个长方形就是6个顶点
+    if (render) {
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glDrawElements(GL_TRIANGLES, drawElement, GL_UNSIGNED_INT, 0); //index有几个顶点就绘制几个，一个长方形就是6个顶点
+    }
 }
+
+
 
 
 
@@ -301,7 +420,7 @@ void Model::sweeping(Face* f, vec3 dir, float length) {
                 currV = currHe->hev;
                 currNewV = mev(currV, currLp, currV->pos + glm::normalize(dir) * length);
             }
-            mef(prevNewV, currNewV, glm::cross(currV->pos - preV->pos, currNewV->pos - currV->pos));
+            mef(prevNewV, currNewV, glm::normalize(glm::cross(currV->pos - preV->pos, currNewV->pos - currV->pos)));
             preV = currV;
             prevNewV = currNewV;
         }

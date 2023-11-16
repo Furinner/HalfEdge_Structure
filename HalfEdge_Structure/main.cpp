@@ -348,6 +348,7 @@ void drawGui(int windowWidth, int windowHeight, uPtr<Model>& model, uPtr<VertDis
                         else {
                             currSolidIdx = i;
                         }
+                        model->update(currSolidIdx,cam);
                     }
                 }
                 ImGui::EndListBox();
@@ -489,14 +490,13 @@ int main()
 
     //接下来可以使用gl方法了
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f); //窗口清理所用颜色
-
+    
     //创建shaderProgram
     uPtr<ShaderProgram> shaderProgram = mkU<ShaderProgram>("glsl/lambert.vert.glsl", "glsl/lambert.frag.glsl");
     uPtr<ShaderProgram> shaderProgramDis = mkU<ShaderProgram>("glsl/display.vert.glsl", "glsl/display.frag.glsl");
     uPtr<ShaderProgram> shaderProgramFaceDis = mkU<ShaderProgram>("glsl/facedis.vert.glsl", "glsl/facedis.frag.glsl");
     
     uPtr<Model> model = mkU<Model>();
-    model->setupModel();
 
     uPtr<VertDisplay> vertDisplay = mkU<VertDisplay>();
     uPtr<EdgeDisplay> edgeDisplay = mkU<EdgeDisplay>();
@@ -526,15 +526,16 @@ int main()
 
         //清理color buffer的所有信息
         //一定要在imgui渲染前调用，不然imgui会有残影问题
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         //draw
         setProjViewModelMat(shaderProgram); //更新proj，view，model矩阵
         setProjViewModelMat(shaderProgramDis);
         setProjViewModelMat(shaderProgramFaceDis);
         shaderProgram->use();
+        shaderProgram->setVec3("camFront", cam->front);
         model->draw();
-        //model->drawPoint();
+        glDisable(GL_DEPTH_TEST);
         shaderProgramFaceDis->use();
         shaderProgramFaceDis->setVec3("camFront", cam->front);
         faceDisplay->draw();
@@ -542,7 +543,7 @@ int main()
         loopDisplay->draw();
         edgeDisplay->draw();
         vertDisplay->draw();
-
+        glEnable(GL_DEPTH_TEST);  //一定要记得加上GL_DEPTH_TEST!!!!!
         //ImGui
         int display_w, display_h;
         glfwGetFramebufferSize(window, &display_w, &display_h);

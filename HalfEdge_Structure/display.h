@@ -5,6 +5,8 @@
 #include "camera.h"
 #include <vector>
 #include "CDT/CDT.h"
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 class VertDisplay {
 public:

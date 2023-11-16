@@ -347,9 +347,9 @@ void FaceDisplay::update(int f1idx, int f2idx, uPtr<Model>& model, uPtr<Camera>&
             std::vector<vec3> nor;
             std::vector<vec3> col;
             std::vector<int> idx;
-            mat4 camProjMat = glm::perspective(glm::radians(cam->fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
+            /*mat4 camProjMat = glm::perspective(glm::radians(cam->fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
             mat4 camViewMat = cam->getViewMatrix();
-            mat4 projView = camProjMat * camViewMat;
+            mat4 projView = camProjMat * camViewMat;*/
             if (f1idx != -1) {
                 //创建CDT
                 CDT::Triangulation<float> cdt;
@@ -368,8 +368,11 @@ void FaceDisplay::update(int f1idx, int f2idx, uPtr<Model>& model, uPtr<Camera>&
                         return;
                     }
                     do {
-                        vec2 vInCam = vec2(projView * vec4(currHe->hev->pos, 1.f));
-                        CDT::V2d<float> tempV{ vInCam.x, vInCam.y };
+                        /*vec2 vInCam = vec2(projView * vec4(currHe->hev->pos, 1.f));
+                        CDT::V2d<float> tempV{ vInCam.x, vInCam.y };*/
+                        glm::quat toPosZ = glm::rotation(f1->nor, vec3(0.f, 0.f, 1.f));
+                        vec2 tempVec = vec2(glm::rotate(toPosZ, currHe->hev->pos));
+                        CDT::V2d<float> tempV{ tempVec.x, tempVec.y };
                         f1pos.push_back(tempV);
                         pos.push_back(currHe->hev->pos);
                         nor.push_back(f1->nor);
@@ -410,8 +413,11 @@ void FaceDisplay::update(int f1idx, int f2idx, uPtr<Model>& model, uPtr<Camera>&
                         return;
                     }
                     do {
-                        vec2 vInCam = vec2(projView * vec4(currHe->hev->pos, 1.f));
-                        CDT::V2d<float> tempV{ vInCam.x, vInCam.y };
+                        /*vec2 vInCam = vec2(projView * vec4(currHe->hev->pos, 1.f));
+                        CDT::V2d<float> tempV{ vInCam.x, vInCam.y };*/
+                        glm::quat toPosZ = glm::rotation(f2->nor, vec3(0.f, 0.f, 1.f));
+                        vec2 tempVec = vec2(glm::rotate(toPosZ, currHe->hev->pos));
+                        CDT::V2d<float> tempV{ tempVec.x, tempVec.y };
                         f1pos.push_back(tempV);
                         pos.push_back(currHe->hev->pos);
                         nor.push_back(f2->nor);

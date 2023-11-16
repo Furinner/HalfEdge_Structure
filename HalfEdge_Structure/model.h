@@ -2,6 +2,11 @@
 #include <glad/glad.h>; 
 #include <vector>
 #include "global.h"
+#include "CDT/CDT.h"
+#include "camera.h"
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/glm.hpp>
 
 class Vertex;
 class HalfEdge;
@@ -66,7 +71,7 @@ public:
     std::vector<uPtr<Vertex>> vertices;
 
     Model();
-    void setupModel();
+    void update(int sIdx, uPtr<Camera>& cam);
     void draw();
 
     //Euler Operations
@@ -80,5 +85,9 @@ public:
     void sweeping(Face* f, vec3 dir, float length);
 private:
     //  渲染数据
-    unsigned int VAO, VBO, EBO;
+    unsigned int VAO, bufPos, bufNor, bufCol, EBO;
+    bool render = false;
+    int sIdx = - 1;
+    int drawElement = 0;
+    void getFaceData(Face* f1, uPtr<Camera>& cam, std::vector<vec3>& pos, std::vector<vec3>& nor, std::vector<vec3>& col, std::vector<int>& idx);
 };
