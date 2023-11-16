@@ -45,6 +45,8 @@ public:
     Face* nextf;
     Loop* floop;
     Solid* fsolid;
+
+    vec3 nor;
 };
 
 class Solid {
@@ -68,14 +70,15 @@ public:
     void draw();
 
     //Euler Operations
-    Solid* mvfs(vec3 vpos);
-    HalfEdge* mev(Vertex* v1, Loop* lp, vec3 v2Pos);
-    Face* mef(Vertex* v1, Vertex* v2);
-    Loop* kemr(Loop* lp);
+    Solid* mvfs(vec3 vpos, vec3 nor);
+    Vertex* mev(Vertex* v1, Loop* lp, vec3 v2Pos);
+    Face* mef(Vertex* v1, Vertex* v2, vec3 newFNor);
+    void kemr(Edge* edg, Loop* lp);
+    void kfmrh(Face* f1, Face* f2);
+
+    //Sweeping
+    void sweeping(Face* f, vec3 dir, float length);
 private:
     //  渲染数据
     unsigned int VAO, VBO, EBO;
-    // 顶点渲染数据
-    unsigned int vVAO1, vVBO1, vEBO1;
-    unsigned int vVAO2, vVBO2;
 };

@@ -86,6 +86,10 @@ void VertDisplay::draw() {
     }
 }
 
+void VertDisplay::dontRender() {
+    render = false;
+}
+
 
 
 LoopDisplay::LoopDisplay() {
@@ -188,6 +192,12 @@ void LoopDisplay::draw() {
     }
 }
 
+void LoopDisplay::dontRender() {
+    render = false;
+}
+
+
+
 EdgeDisplay::EdgeDisplay() {
     float points[] = {
         0.f, 0.f, 0.f,
@@ -260,4 +270,196 @@ void EdgeDisplay::draw() {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, 0);
     }
+}
+
+void EdgeDisplay::dontRender() {
+    render = false;
+}
+
+
+
+FaceDisplay::FaceDisplay() {
+    float points[] = {
+        0.f, 0.f, 0.f,
+        1.f, 0.f, 0.f,
+        1.f, 1.f, 1.f
+    };
+    float nors[] = {
+        0.f, 0.f, 1.f,
+        0.f, 0.f, 1.f,
+        0.f, 0.f, 1.f,
+    };
+    float cols[] = {
+        0.5f, 0.5f, 0.5f,
+        0.5f, 0.5f, 0.5f,
+        0.5f, 0.5f, 0.5f,
+    };
+    unsigned int indices[] = {
+        0, 1, 2
+    };
+    //设置点1的VAO
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &bufPos);
+    glGenBuffers(1, &bufNor);
+    glGenBuffers(1, &bufCol);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, bufPos);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, bufNor);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(nors), nors, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, bufCol);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cols), cols, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+void FaceDisplay::update(int f1idx, int f2idx, uPtr<Model>& model, uPtr<Camera>& cam, const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT) {
+    this->f1idx = f1idx;
+    this->f2idx = f2idx;
+    int f1VIdx = 0;
+    int f2VIdx = 0;
+    if ((f1idx != -1) || (f2idx != -1)) {
+        render = true;
+    }
+    else {
+        render = false;
+    }
+    if (render) {
+        try {
+            std::vector<vec3> pos;
+            std::vector<vec3> nor;
+            std::vector<vec3> col;
+            std::vector<int> idx;
+            mat4 camProjMat = glm::perspective(glm::radians(cam->fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
+            mat4 camViewMat = cam->getViewMatrix();
+            mat4 projView = camProjMat * camViewMat;
+            if (f1idx != -1) {
+                //创建CDT
+                CDT::Triangulation<float> cdt;
+                std::vector<CDT::V2d<float>> f1pos;
+                CDT::EdgeVec edges;
+                Face* f1 = model->faces[f1idx].get();
+                //iterate all loops of this face
+                Loop* lp1 = f1->floop;
+                Loop* currlp = lp1;
+                do {
+                    int origF1VIdx = f1VIdx;
+                    HalfEdge* origHe = currlp->ledg;
+                    HalfEdge* currHe = origHe;
+                    if (currHe == nullptr) {
+                        render = false;
+                        return;
+                    }
+                    do {
+                        vec2 vInCam = vec2(projView * vec4(currHe->hev->pos, 1.f));
+                        CDT::V2d<float> tempV{ vInCam.x, vInCam.y };
+                        f1pos.push_back(tempV);
+                        pos.push_back(currHe->hev->pos);
+                        nor.push_back(f1->nor);
+                        col.push_back(vec3(1.f, 0.f, 0.f));
+                        edges.push_back(CDT::Edge(f1VIdx, f1VIdx + 1));
+                        f1VIdx += 1;
+                        currHe = currHe->nxt;
+                    } while (currHe != origHe);
+                    edges.pop_back();
+                    edges.push_back(CDT::Edge(f1VIdx - 1, origF1VIdx));
+                    currlp = currlp->nextl;
+                } while (currlp != lp1);
+                cdt.insertVertices(f1pos);
+                cdt.insertEdges(edges);
+                cdt.eraseOuterTrianglesAndHoles();
+                for (int i = 0; i < cdt.triangles.size(); ++i) {
+                    idx.push_back(cdt.triangles[i].vertices[0]);
+                    idx.push_back(cdt.triangles[i].vertices[1]);
+                    idx.push_back(cdt.triangles[i].vertices[2]);
+                }
+            }
+            if (f2idx != -1) {
+                //创建CDT
+                int idx_offset = pos.size();
+                CDT::Triangulation<float> cdt;
+                std::vector<CDT::V2d<float>> f1pos;
+                CDT::EdgeVec edges;
+                Face* f2 = model->faces[f2idx].get();
+                //iterate all loops of this face
+                Loop* lp1 = f2->floop;
+                Loop* currlp = lp1;
+                do {
+                    int origF2VIdx = f2VIdx;
+                    HalfEdge* origHe = currlp->ledg;
+                    HalfEdge* currHe = origHe;
+                    if (currHe == nullptr) {
+                        render = false;
+                        return;
+                    }
+                    do {
+                        vec2 vInCam = vec2(projView * vec4(currHe->hev->pos, 1.f));
+                        CDT::V2d<float> tempV{ vInCam.x, vInCam.y };
+                        f1pos.push_back(tempV);
+                        pos.push_back(currHe->hev->pos);
+                        nor.push_back(f2->nor);
+                        col.push_back(vec3(0.f, 1.f, 0.f));
+                        edges.push_back(CDT::Edge(f2VIdx, f2VIdx + 1));
+                        f2VIdx += 1;
+                        currHe = currHe->nxt;
+                    } while (currHe != origHe);
+                    edges.pop_back();
+                    edges.push_back(CDT::Edge(f2VIdx - 1, origF2VIdx));
+                    currlp = currlp->nextl;
+                } while (currlp != lp1);
+                cdt.insertVertices(f1pos);
+                cdt.insertEdges(edges);
+                cdt.eraseOuterTrianglesAndHoles();
+                for (int i = 0; i < cdt.triangles.size(); ++i) {
+                    idx.push_back(cdt.triangles[i].vertices[0] + idx_offset);
+                    idx.push_back(cdt.triangles[i].vertices[1] + idx_offset);
+                    idx.push_back(cdt.triangles[i].vertices[2] + idx_offset);
+                }
+            }
+            glBindBuffer(GL_ARRAY_BUFFER, bufPos);
+            glBufferData(GL_ARRAY_BUFFER, pos.size() * sizeof(vec3), pos.data(), GL_STATIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, bufNor);
+            glBufferData(GL_ARRAY_BUFFER, nor.size() * sizeof(vec3), nor.data(), GL_STATIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, bufCol);
+            glBufferData(GL_ARRAY_BUFFER, col.size() * sizeof(vec3), col.data(), GL_STATIC_DRAW);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx.size() * sizeof(GLuint), idx.data(), GL_STATIC_DRAW);
+            drawElement = idx.size();
+            glBindVertexArray(0);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        }
+        catch (...) {
+            render = false;
+        }
+    }
+}
+
+void FaceDisplay::draw() {
+    if (render) {
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glDrawElements(GL_TRIANGLES, drawElement, GL_UNSIGNED_INT, 0);
+    }
+}
+
+void FaceDisplay::dontRender() {
+    render = false;
 }

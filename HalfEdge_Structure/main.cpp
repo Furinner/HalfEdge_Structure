@@ -14,7 +14,7 @@
 #include "shaderprogram.h"
 #include "model.h"
 #include "display.h"
-
+#include "CDT/CDT.h"
 //可调
 //屏幕设置
 const unsigned int SCR_WIDTH = 1980;
@@ -30,7 +30,9 @@ float lastX = SCR_WIDTH / 2.0f; //记录鼠标X轴地点
 float lastY = SCR_HEIGHT / 2.0f; //记录鼠标Y轴地点
 //Euler操作变量
 vec3 mvfsPos(0.f);
+vec3 mvfsNor = vec3(0.f, 0.f, 1.f);
 vec3 mevPos(0.f);
+vec3 mefNor = vec3(0.f, 0.f, 1.f);
 //元素选择变量
 int currSolidIdx = -1;
 int currFaceIdx = -1;
@@ -38,6 +40,10 @@ int currLoopIdx = -1;
 int currEdgeIdx = -1;
 int currVertIdx = -1;
 int mefV2Idx = -1;
+int kfmrhF2Idx = -1;
+//Sweeping变量
+vec3 sweepingDir(1.f);
+float sweepingLen = 1.f;
 //Debug Log
 std::string debugLog = "No warning or errors!";
 //创建摄像机
@@ -105,18 +111,22 @@ void mousePosCallback(GLFWwindow* window, double xposIn, double yposIn) {
 }
 
 // imgui的辅助方法，将所有元素选择相关变量归0
-void cleanGeoEleIdx() {
+void cleanGeoEleIdx(uPtr<VertDisplay>& vertDisplay, uPtr<LoopDisplay>& loopDisplay, uPtr<EdgeDisplay>& edgeDisplay, uPtr<FaceDisplay>& faceDisplay) {
     currSolidIdx = -1;
     currFaceIdx = -1;
     currLoopIdx = -1;
     currEdgeIdx = -1;
     currVertIdx = -1;
     mefV2Idx = -1;
+    vertDisplay->dontRender();
+    loopDisplay->dontRender();
+    edgeDisplay->dontRender();
+    faceDisplay->dontRender();
 }
 
 
 // ImGui的draw call。这里可以设置ImGui的整体格式
-void drawGui(int windowWidth, int windowHeight, uPtr<Model>& model, uPtr<VertDisplay>& vertDisplay, uPtr<LoopDisplay>& loopDisplay, uPtr<EdgeDisplay>& edgeDisplay) {
+void drawGui(int windowWidth, int windowHeight, uPtr<Model>& model, uPtr<VertDisplay>& vertDisplay, uPtr<LoopDisplay>& loopDisplay, uPtr<EdgeDisplay>& edgeDisplay, uPtr<FaceDisplay>& faceDisplay) {
     // Dear imgui new frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -124,7 +134,7 @@ void drawGui(int windowWidth, int windowHeight, uPtr<Model>& model, uPtr<VertDis
 
     // Dear imgui define
     ImVec2 minSize(300.f, 220.f);
-    ImVec2 maxSize((float)windowWidth * 0.3, (float)windowHeight * 0.5);
+    ImVec2 maxSize((float)windowWidth * 0.3, (float)windowHeight * 0.9);
     ImGui::SetNextWindowSizeConstraints(minSize, maxSize);
 
     ImGui::Begin("Control Panel");
@@ -136,15 +146,20 @@ void drawGui(int windowWidth, int windowHeight, uPtr<Model>& model, uPtr<VertDis
     ImGui::InputFloat3("Camera Position", &(cam->position.x));
     ImGui::Separator();
     ImGui::Text("Euler Operations");
-    ImGui::InputFloat3("##mvfsVec3", &(mvfsPos.x));
+    ImGui::Dummy(ImVec2(ImGui::CalcTextSize("mvfs").x + 7.f, 0.0f));
     ImGui::SameLine();
+    ImGui::PushItemWidth(200.f);
+    ImGui::InputFloat3("##mvfsNorVec3", &(mvfsNor.x));
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+    ImGui::Text("FaceNor");
     if (ImGui::Button("mvfs")) {
-        model->mvfs(mvfsPos);
+        model->mvfs(mvfsPos, mvfsNor);
     };
     ImGui::SameLine();
-    ImGui::Text("(vec3)");
-    ImGui::InputFloat3("##mevVec3", &(mevPos.x));
+    ImGui::InputFloat3("##mvfsPosVec3", &(mvfsPos.x));
     ImGui::SameLine();
+    ImGui::Text("(vec3)");
     if (ImGui::Button("mev")) {
         if (currVertIdx == -1) {
             debugLog = "Select a vertex before performing mev operation!";
@@ -156,11 +171,31 @@ void drawGui(int windowWidth, int windowHeight, uPtr<Model>& model, uPtr<VertDis
             Vertex* currVert = model->vertices[currVertIdx].get();
             Loop* currLoop = model->loops[currLoopIdx].get();
             model->mev(currVert, currLoop, mevPos);
-            cleanGeoEleIdx();
+            cleanGeoEleIdx(vertDisplay, loopDisplay, edgeDisplay, faceDisplay);
         }
     };
     ImGui::SameLine();
+    ImGui::InputFloat3("##mevVec3", &(mevPos.x));
+    ImGui::SameLine();
     ImGui::Text("(v1, lp, vec3)");
+    if (ImGui::Button("mef")) {
+        if (currVertIdx == -1) {
+            debugLog = "Select a vertex1 before performing mef operation!";
+        }
+        else if (mefV2Idx == -1) {
+            debugLog = "Select a vertex2 before performing mef operation!";
+        }
+        else if (currVertIdx == mefV2Idx) {
+            debugLog = "Select different v1 and v2 to perform mef operation!";
+        }
+        else {
+            Vertex* v1 = model->vertices[currVertIdx].get();
+            Vertex* v2 = model->vertices[mefV2Idx].get();
+            model->mef(v1, v2, mefNor);
+            cleanGeoEleIdx(vertDisplay, loopDisplay, edgeDisplay, faceDisplay);
+        }
+    }
+    ImGui::SameLine();
     std::string mefV2Value = "";
     if (mefV2Idx != -1) {
         mefV2Value = "v" + std::to_string(mefV2Idx);
@@ -184,35 +219,159 @@ void drawGui(int windowWidth, int windowHeight, uPtr<Model>& model, uPtr<VertDis
     }
     ImGui::PopItemWidth();
     ImGui::SameLine();
-    if (ImGui::Button("mef")) {
-        if (currVertIdx == -1) {
-            debugLog = "Select a vertex1 before performing mev operation!";
-        }
-        else if (mefV2Idx == -1) {
-            debugLog = "Select a vertex2 before performing mev operation!";
-        }
-        else if (currVertIdx == mefV2Idx) {
-            debugLog = "Select different v1 and v2 to perform mev operation!";
-        }
-        else {
-            Vertex* v1 = model->vertices[currVertIdx].get();
-            Vertex* v2 = model->vertices[mefV2Idx].get();
-            model->mef(v1, v2);
-            cleanGeoEleIdx();
-        }
-    }
+    ImGui::PushItemWidth(200.f);
+    ImGui::InputFloat3("##mefNor", &(mefNor.x));
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+    ImGui::Text("newFNor");
     ImGui::SameLine();
     ImGui::Text("(v1, v2)");
     if (ImGui::Button("kemr")) {
-        
+        if (currEdgeIdx == -1) {
+            debugLog = "Select an edge before performing kemr operation!";
+        }
+        else if (currLoopIdx == -1) {
+            debugLog = "Select a loop before performing kemr operation!";
+        }
+        else {
+            Edge* currEdge = model->edges[currEdgeIdx].get();
+            if (currEdge->he1->nxt == currEdge->he2) {
+                debugLog = "Edge need connected to two valid rings before performing kemr operation!";
+            }
+            else {
+                Loop* currLoop = model->loops[currLoopIdx].get();
+                bool he1InLoop = false;
+                bool he2InLoop = false;
+                HalfEdge* origHe = currLoop->ledg;
+                HalfEdge* currHe = origHe;
+                do {
+                    if (!he1InLoop) {
+                        if (currHe == currEdge->he1) {
+                            he1InLoop = true;
+                        }
+                    }
+                    if (!he2InLoop) {
+                        if (currHe == currEdge->he2) {
+                            he2InLoop = true;
+                        }
+                    }
+                    if (he1InLoop && he2InLoop) {
+                        break;
+                    }
+                    currHe = currHe->nxt;
+                } while (currHe != origHe);
+                if (he1InLoop && he2InLoop) {
+                    model->kemr(currEdge, currLoop);
+                    cleanGeoEleIdx(vertDisplay, loopDisplay, edgeDisplay, faceDisplay);
+                }
+                else {
+                    debugLog = "Edge's two halfEdges should be in the same loop before performing kemr!";
+                }
+            }
+        }
     }
+    ImGui::SameLine();
+    ImGui::Text("(lp, edg)");
+    std::string kfmrhF2Value = "";
+    if (kfmrhF2Idx != -1) {
+        kfmrhF2Value = "f" + std::to_string(kfmrhF2Idx);
+    }
+    if (ImGui::Button("kfmrh")) {
+        if (currFaceIdx == -1) {
+            debugLog = "Please select the first face before performing kfmrh!";
+        }
+        else if (kfmrhF2Idx == -1) {
+            debugLog = "Please select the second face before performing kfmrh!";
+        }
+        else if (currFaceIdx == kfmrhF2Idx) {
+            debugLog = "Please select different faces before performing kfmrh!";
+        }
+        else {
+            model->kfmrh(model->faces[currFaceIdx].get(), model->faces[kfmrhF2Idx].get());
+        }
+    }
+    ImGui::SameLine();
+    ImGui::PushItemWidth(ImGui::CalcTextSize("f2").x * 4);
+    if (ImGui::BeginCombo("f2", kfmrhF2Value.c_str(), 0))
+    {
+        for (int i = 0; i < model->faces.size(); ++i)
+        {
+            if (ImGui::Selectable(("f" + std::to_string(i)).c_str(), (kfmrhF2Idx == i))) {
+                if (kfmrhF2Idx == i) {
+                    kfmrhF2Idx = -1;
+                }
+                else {
+                    kfmrhF2Idx = i;
+                }
+                faceDisplay->update(currFaceIdx, kfmrhF2Idx, model, cam, SCR_WIDTH, SCR_HEIGHT);
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+    ImGui::Text("(f1, f2)");
+    ImGui::Separator();
+    ImGui::Text("Sweeping Operation");
+    if (ImGui::Button("sweeping")) {
+        if (currFaceIdx == -1) {
+            debugLog = "Please select the first face before performing sweeping!";
+        }
+        else {
+            model->sweeping(model->faces[currFaceIdx].get(), sweepingDir, sweepingLen);
+        }
+    }
+    ImGui::SameLine();
+    ImGui::PushItemWidth(200.f);
+    ImGui::InputFloat3("dir", &(sweepingDir.x));
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+    ImGui::PushItemWidth(60.f);
+    ImGui::InputFloat("len", &(sweepingLen));
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+    ImGui::Text("(f, dir, len)");
     ImGui::Separator();
     ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
     if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags))
     {
         if (ImGui::BeginTabItem("Solids"))
         {
-            
+            if (ImGui::BeginListBox("##SolidsListBox"))
+            {
+                for (int i = 0; i < model->solids.size(); ++i)
+                {
+                    if (ImGui::Selectable(("s" + std::to_string(i)).c_str(), (currSolidIdx == i))) {
+                        if (currSolidIdx == i) {
+                            currSolidIdx = -1;
+                        }
+                        else {
+                            currSolidIdx = i;
+                        }
+                    }
+                }
+                ImGui::EndListBox();
+            }
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Faces"))
+        {
+            if (ImGui::BeginListBox("##FacesListBox"))
+            {
+                for (int i = 0; i < model->faces.size(); ++i)
+                {
+                    if (ImGui::Selectable(("f" + std::to_string(i)).c_str(), (currFaceIdx == i))) {
+                        if (currFaceIdx == i) {
+                            currFaceIdx = -1;
+                        }
+                        else {
+                            currFaceIdx = i;
+                        }
+                        faceDisplay->update(currFaceIdx, kfmrhF2Idx, model, cam, SCR_WIDTH, SCR_HEIGHT);
+                    }
+                }
+                ImGui::EndListBox();
+            }
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Loops"))
@@ -289,6 +448,7 @@ void drawGui(int windowWidth, int windowHeight, uPtr<Model>& model, uPtr<VertDis
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
+//将摄像机计算的viewProj矩阵传给shader
 void setProjViewModelMat(uPtr<ShaderProgram>& shaderProgram) {
     shaderProgram->use();
     mat4 proj = glm::perspective(glm::radians(cam->fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
@@ -333,14 +493,15 @@ int main()
     //创建shaderProgram
     uPtr<ShaderProgram> shaderProgram = mkU<ShaderProgram>("glsl/lambert.vert.glsl", "glsl/lambert.frag.glsl");
     uPtr<ShaderProgram> shaderProgramDis = mkU<ShaderProgram>("glsl/display.vert.glsl", "glsl/display.frag.glsl");
-
+    uPtr<ShaderProgram> shaderProgramFaceDis = mkU<ShaderProgram>("glsl/facedis.vert.glsl", "glsl/facedis.frag.glsl");
+    
     uPtr<Model> model = mkU<Model>();
     model->setupModel();
 
     uPtr<VertDisplay> vertDisplay = mkU<VertDisplay>();
     uPtr<EdgeDisplay> edgeDisplay = mkU<EdgeDisplay>();
     uPtr<LoopDisplay> loopDisplay = mkU<LoopDisplay>();
-
+    uPtr<FaceDisplay> faceDisplay = mkU<FaceDisplay>();
     
     //创建ImGui
     IMGUI_CHECKVERSION();
@@ -370,9 +531,13 @@ int main()
         //draw
         setProjViewModelMat(shaderProgram); //更新proj，view，model矩阵
         setProjViewModelMat(shaderProgramDis);
+        setProjViewModelMat(shaderProgramFaceDis);
         shaderProgram->use();
         model->draw();
         //model->drawPoint();
+        shaderProgramFaceDis->use();
+        shaderProgramFaceDis->setVec3("camFront", cam->front);
+        faceDisplay->draw();
         shaderProgramDis->use();
         loopDisplay->draw();
         edgeDisplay->draw();
@@ -381,7 +546,7 @@ int main()
         //ImGui
         int display_w, display_h;
         glfwGetFramebufferSize(window, &display_w, &display_h);
-        drawGui(display_w, display_h, model, vertDisplay, loopDisplay, edgeDisplay);
+        drawGui(display_w, display_h, model, vertDisplay, loopDisplay, edgeDisplay, faceDisplay);
 
         glfwSwapBuffers(window); //双缓冲机制，交换前缓冲和后缓冲
     }

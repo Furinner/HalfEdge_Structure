@@ -118,5 +118,11 @@
     <None Include="glsl\display.vert.glsl">
       <Filter>glsl</Filter>
     </None>
+    <None Include="glsl\facedis.frag.glsl">
+      <Filter>glsl</Filter>
+    </None>
+    <None Include="glsl\facedis.vert.glsl">
+      <Filter>glsl</Filter>
+    </None>
   </ItemGroup>
 </Project>
