@@ -1,7 +1,7 @@
 ### 项目介绍
 
 该项目以基于边界表示的半边数据结构实现了5个基本的欧拉操作以及平移扫掠操作。该项目中，GUI实现使用了ImGui，渲染使用了OpenGL，计算方面使用了一些数学计算包例如glm, CDT库等。调用库全部都放在`include`，`lib`和`imgui`三个文件夹内。
-项目基本内容全部位于`HalfEdge_Structure`文件夹中。欧拉操作具体实现及数据结构基本都在`model.h`和`model.cpp`两个文件里。glsl文件夹用于存放shaderProgram。
+项目基本内容全部位于`HalfEdge_Structure`文件夹中。欧拉操作具体实现及数据结构基本都在`model.h`和`model.cpp`两个文件里。`glsl`文件夹用于存放shaderProgram。
 
 ### 使用流程
 ![](img/1.png)
@@ -18,12 +18,20 @@ D.DebugLog窗口用于给予用户错误提示等。
 
 ### 欧拉操作
 `mvfs`: 完整实现为`mvfs`(vec3 `pos`, vec3 `nor`)。`pos`代表新生成的顶点的位置，`nor`代表新生成的面的法向。由于可能存在concave的面以及其他情况，面的法向并不好计算，这里让用户自己维护好不同面的法向。  
-![](img/6.gif)
-`mev`: 完整实现为`mev`(vec3 `pos`, vec3 `nor`)
-`vmfs`
-`vmfs`
-`vmfs`
+`mev`: 完整实现为`mev`(vert `v1`, loop `lp`, vec3 `pos`)。`v1`代表起始顶点，`lp`为目标环，`pos`为新点(这里称它为`v2`)的坐标。下图为示例，我们现在拓扑元素列表中选中对应的点和边，再输入`pos`的值，点击`mev`按钮即可。  
+![](img/1.gif)  
+`mef`: 完整实现为`mef`(vert `v1`, vert `v2`, vec3 `nor`)。`v1`代表起始点，`v2`代表终点，`nor`代表新面的法线(正如之前所说，在实现上我让用户自己维护面的法线)。该方法中同时定义`v1`到`v2`的走向为原始loop的走向，`v2`到`v1`的方向为新loop的走向。下图为示例，我们在拓扑元素表中选定`v1`，再在`mef`的参数中选择`v2`，最后输入`nor`，点击`mef`按钮即可。  
+![](img/2.gif)  
+`kemr`: 完整实现为`kemr`(edge `edg`, loop 'lp')。`lp`为想要切开的环，`edg`为该环上的一个边。下图为示例，我们在拓扑元素表中选定`lp`和`edg`，点击`kemr`按钮即可。  
+![](img/3.gif)  
+`kfmrh`: 完整实现为`kfmrh`(face `f1`, face `f2`)。该操作将使得`f1`变成`f2`的一个环。下图为示例，我们在拓扑元素表中选定`f1`，再在`kfmrh`的参数中选择好`f2`，点击`kfmrh`按钮即可。  
+![](img/4.gif)  
 
-|  Azimuth-Range view of New York | Orthogonal view of New York |
-| ----------------- | ----------------- | 
-| ![](img/result/newYork/newYorkAzimuth.png) | ![](img/result/newYork/newYorkImage.png)  |  
+
+### 扫掠操作
+`sweeping`: 完整实现为`sweeping`(face `f`, vec3 `dir`, float `len`)。`f`为要执行扫掠的平面。`dir`为扫掠方向，`len`为扫掠长度。以下图为例，在拓扑元素表中选定`f`，输入`dir`和`len`，按下`sweeping`按钮即可。最终的shading效果图也如下所示。    
+![](img/5.gif)
+
+### 后续优化和改进
+* Basic pipeline
+* 实现方法上尚有很多不足。所以建议式现在当前的二维平面上构建
